@@ -16,7 +16,7 @@ import torchvision.transforms as T
 import math
 
 
-device = torch.device("cpu" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 epsilon = 0.25
