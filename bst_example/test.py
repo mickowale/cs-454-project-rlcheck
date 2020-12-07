@@ -16,14 +16,14 @@ import torchvision.transforms as T
 import math
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu" if torch.cuda.is_available() else "cpu")
 
 
 epsilon = 0.25
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
-TRIALS = 100000
+TRIALS = 1000
 TARGET_UPDATE = 10
 
 
@@ -177,10 +177,11 @@ def generate_tree(state, depth=0):
 
 
 def fuzz():
-
-    valids = 0
+    global valid_set,valids
+    
     valid_set = set()
     for i in range(TRIALS):
+        print("epoch = ", i)
         state = State(6)
         tree = generate_tree(state)
         print(tree)
@@ -195,11 +196,12 @@ def fuzz():
 
         if (i%TARGET_UPDATE == 0):
             target_net.load_state_dict(policy_net.state_dict())
-        print("epoch = ", i)
+        print("Number of valids       : ", valids)
+        print("Number of unique valids: ", len(valid_set))
+        
 
 
 
 
 fuzz()
 # torch.save(policy_net.state_dict(), "my_model")
-
