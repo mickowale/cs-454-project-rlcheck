@@ -37,9 +37,9 @@ def get_reward(tree):
         valids += 1
         if tree.__repr__() not in valid_set:
             valid_set.add(tree.__repr__())
-            return 20
-        else:
             return 10
+        else:
+            return 1
     else:
         return -1
 
@@ -75,15 +75,15 @@ class DQN(nn.Module):
     def forward(self, x):
 
         x = self.linear1(x)
-        # x = self.relu(x)
+        # x = F.softmax(x)
         x = self.linear2(x)
-        # x = self.relu(x)
+        # x = F.softmax(x)
         x = self.linear3(x)
-        # x = self.relu(x)
+        # x = F.softmax(x)
         return x
 
 def state_to_tensor(state):
-    # state = [v/10 for v in state]
+    state = [v/10 for v in state]
 
     a = np.array(state, dtype=np.float32)
     return  torch.from_numpy(a)
