@@ -25,7 +25,7 @@ epsilon = 0.25
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
-TRIALS = 10000
+TRIALS = 1000
 TARGET_UPDATE = 10
 done =0
 
@@ -150,16 +150,25 @@ def select_exploit_action(model, state):
 def generate_tree(state, depth=0):
     curState = [0]+state.memory[:]
     value = agent.act(np.array([0]+state.memory), epsilon)
-    agent.step(curState, value, 0, [0]+state.memory, done)
-    # print(value)
+    reward = 0
+    if value>10:
+        reward = -1
+    agent.step(curState, value, reward, [0]+state.memory, done)
+    print(value)
     state.push(value)
     tree = BinarySearchTree(value) 
-    if depth < MAX_DEPTH and \
-            random.choice([True,False]):
-        # state.push(0) # To denote left subtree existence
+
+    left = random.choice([True,False])
+    leftValue = 11 if left else 12
+    state.push(leftValue)
+    if depth < MAX_DEPTH and left:
+        # state.push(left) # To denote left subtree existence
         tree.left = generate_tree(state, depth+1)
-    if depth < MAX_DEPTH and \
-            random.choice([True, False]):
+    
+    right = random.choice([True,False])
+    rightValue = 11 if left else 12
+    state.push(rightValue)
+    if depth < MAX_DEPTH and right:
         # state.push(-1) # To denote right subtree existence
         tree.right = generate_tree(state, depth+1) 
     return tree 
