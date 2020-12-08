@@ -19,7 +19,7 @@ import math
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-epsilon = 0.5
+epsilon = 0.25
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
@@ -75,13 +75,16 @@ class DQN(nn.Module):
     def forward(self, x):
 
         x = self.linear1(x)
-        x = self.relu(x)
+        # x = self.relu(x)
         x = self.linear2(x)
-        x = self.relu(x)
+        # x = self.relu(x)
         x = self.linear3(x)
-        return self.relu(x)
+        # x = self.relu(x)
+        return x
 
 def state_to_tensor(state):
+    # state = [v/10 for v in state]
+
     a = np.array(state, dtype=np.float32)
     return  torch.from_numpy(a)
 
@@ -90,12 +93,15 @@ def optimize_model(trans):
     p_values = []
 
     # Collect the y and p values to calculate the loss
-    (state, idx_action, reward, next_state) = trans
+    (state, action, reward, next_state) = trans
+    idx_action = action-1 # The index in the list is action - 1
+
+
     y = torch.from_numpy(np.array(reward, dtype=np.float32))
 
     state = state_to_tensor(state)
     p = policy_net(state)[idx_action]
-    y_values.append(y.unsqueeze(0))
+    y_values.append(y)
     p_values.append(p)
     y_values = torch.stack(y_values).detach()
     p_values = torch.stack(p_values)
@@ -115,21 +121,27 @@ optimizer = optim.RMSprop(policy_net.parameters())
 
 def select_action(state):
     if random.random() < epsilon:
-        a = random.choices([0,1,2,3,4,5,6,7,8,9])
+        a = random.choices([1,2,3,4,5,6,7,8,9,10])
         return torch.from_numpy(np.array(a))
 
     else:   
         state = state_to_tensor(state.memory)
         output = policy_net(state)
-        return torch.argmax(output)
+        return torch.argmax(output) + 1
 
 
 
 # TODO: When do we use the target network?
 def select_exploit_action(model, state):
-    state = state_to_tensor(state.memory)
-    output = model(state)
-    return torch.argmax(output)
+    if random.random() < epsilon:
+        a = random.choice([1,2,3,4,5,6,7,8,9,10])
+        return a
+    else:
+        state = state_to_tensor(state.memory)
+        output = model(state)
+        # print("State: ", state, end="")
+        # print(output)
+        return int(torch.argmax(output)) + 1
 
 
 def generate_tree(state, depth=0):
@@ -151,7 +163,10 @@ def fuzz():
     for i in range(TRIALS):
         state = State(6)
         tree = generate_tree(state)
-        # print(tree)
+
+        print("=========================================")
+        print(tree)
+        print("=========================================")
         reward = get_reward(tree)
         for (cur_state, action, new_state) in state.record:
             new_state = state_to_tensor(new_state)
