@@ -41,7 +41,7 @@ def fuzz(oracle, validity_fn):
         else:
             oracle.reward(-1)
     sizes = [valid_tree.count("(") for valid_tree in valid_set]
-    print("{} trials, {} valids, {} unique valids".format(trials, valids, len(valid_set)), end ='\r')
+    print("{} trials, {} valids, {} unique valids".format(trials, valids, len(valid_set)), end ='\n')
   #  print("\ndone!", file=sys.stderr)
     print(Counter(sizes))
 
