@@ -19,7 +19,7 @@ import math
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-epsilon = 0.25
+epsilon = 0.5
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
@@ -62,27 +62,6 @@ class State(object):
     def __len__(self):
         return len(self.memory)
 
-class ReplayMemory(object):
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-        self.position = 0
-
-    def push(self, transition):
-        self.memory.insert(0, transition)
-        if (len(self) > self.capacity):
-            self.memory = self.memory[:self.capacity]
-
-    # Used to sample some transitions to optimized upon
-    def sample(self, batch_size):
-        if batch_size > len(self):
-            return self.memory.copy()
-        else:
-            return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
-
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
@@ -100,29 +79,24 @@ class DQN(nn.Module):
         x = self.linear2(x)
         x = self.relu(x)
         x = self.linear3(x)
-        return x
+        return self.relu(x)
 
 def state_to_tensor(state):
     a = np.array(state, dtype=np.float32)
     return  torch.from_numpy(a)
 
-def optimize_model():
-    if len(memory) < BATCH_SIZE:
-        return
-    transitions = memory.sample(BATCH_SIZE)
-
+def optimize_model(trans):
     y_values = []
     p_values = []
 
     # Collect the y and p values to calculate the loss
-    for trans in transitions:   
-        (state, idx_action, reward, next_state) = trans
-        y = torch.from_numpy(np.array(reward, dtype=np.float32))
+    (state, idx_action, reward, next_state) = trans
+    y = torch.from_numpy(np.array(reward, dtype=np.float32))
 
-        state = state_to_tensor(state)
-        p = policy_net(state)[idx_action]
-        y_values.append(y.unsqueeze(0))
-        p_values.append(p)
+    state = state_to_tensor(state)
+    p = policy_net(state)[idx_action]
+    y_values.append(y.unsqueeze(0))
+    p_values.append(p)
     y_values = torch.stack(y_values).detach()
     p_values = torch.stack(p_values)
     loss = F.mse_loss(p_values, y_values)
@@ -132,12 +106,11 @@ def optimize_model():
 
 
 policy_net = DQN().to(device)
-target_net = DQN().to(device)
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
+# target_net = DQN().to(device)
+# target_net.load_state_dict(policy_net.state_dict())
+# target_net.eval()
 
 optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(100)
 
 
 def select_action(state):
@@ -148,7 +121,7 @@ def select_action(state):
     else:   
         state = state_to_tensor(state.memory)
         output = policy_net(state)
-        return torch.argmax(output.detach()).unsqueeze(0)
+        return torch.argmax(output)
 
 
 
@@ -159,10 +132,8 @@ def select_exploit_action(model, state):
     return torch.argmax(output)
 
 
-memory = ReplayMemory(100)
-
 def generate_tree(state, depth=0):
-    value = select_exploit_action(target_net, state)
+    value = select_exploit_action(policy_net, state)
     state.push(value)
     tree = BinarySearchTree(value) 
     if depth < MAX_DEPTH and \
@@ -177,25 +148,22 @@ def generate_tree(state, depth=0):
 
 
 def fuzz():
-
-    valids = 0
-    valid_set = set()
     for i in range(TRIALS):
         state = State(6)
         tree = generate_tree(state)
-        print(tree)
+        # print(tree)
         reward = get_reward(tree)
         for (cur_state, action, new_state) in state.record:
             new_state = state_to_tensor(new_state)
             reward_val = torch.from_numpy(np.array(reward))
             transition = (cur_state, action, reward_val, new_state)
+            optimize_model(transition)
 
-            memory.push(transition)
-            optimize_model()
+        # if (i%TARGET_UPDATE == 0):
+        #     target_net.load_state_dict(policy_net.state_dict())
+        # print("epoch = ", i)
+        print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
 
-        if (i%TARGET_UPDATE == 0):
-            target_net.load_state_dict(policy_net.state_dict())
-        print("epoch = ", i)
 
 
 
