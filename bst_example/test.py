@@ -15,6 +15,8 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import math
 
+from dqn_agent import Agent
+agent = Agent(state_size=8, action_size=13, seed=0)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -23,9 +25,9 @@ epsilon = 0.25
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
-TRIALS = 100000
+TRIALS = 10000
 TARGET_UPDATE = 10
-
+done =0
 
 valids = 0
 valid_set = set()
@@ -72,12 +74,12 @@ class DQN(nn.Module):
         self.relu = nn.ReLU()          
 
 
-    def forward(self, x):
+    def forward(self, x):   
 
         x = self.linear1(x)
-        # x = self.relu(x)
+        x = self.relu(x)
         x = self.linear2(x)
-        # x = self.relu(x)
+        x = self.relu(x)
         x = self.linear3(x)
         # x = self.relu(x)
         return x
@@ -139,17 +141,21 @@ def select_exploit_action(model, state):
     else:
         state = state_to_tensor(state.memory)
         output = model(state)
-        # print("State: ", state, end="")
+        # #print("State: ", state, end="")
+        print(model.parameters)
         # print(output)
         return int(torch.argmax(output)) + 1
 
 
 def generate_tree(state, depth=0):
-    value = select_exploit_action(policy_net, state)
+    curState = [0]+state.memory[:]
+    value = agent.act(np.array([0]+state.memory), epsilon)
+    agent.step(curState, value, 0, [0]+state.memory, done)
+    # print(value)
     state.push(value)
     tree = BinarySearchTree(value) 
     if depth < MAX_DEPTH and \
-            random.choice([True, False]):
+            random.choice([True,False]):
         # state.push(0) # To denote left subtree existence
         tree.left = generate_tree(state, depth+1)
     if depth < MAX_DEPTH and \
@@ -161,22 +167,30 @@ def generate_tree(state, depth=0):
 
 def fuzz():
     for i in range(TRIALS):
-        state = State(6)
+        state = State(7)
+        curState = [0]+state.memory[:]
+        # print("curState",curState)
         tree = generate_tree(state)
-
-        print("=========================================")
-        print(tree)
-        print("=========================================")
+        # action = agent.act(np.array(state.memory), epsilon)
         reward = get_reward(tree)
-        for (cur_state, action, new_state) in state.record:
-            new_state = state_to_tensor(new_state)
-            reward_val = torch.from_numpy(np.array(reward))
-            transition = (cur_state, action, reward_val, new_state)
-            optimize_model(transition)
+        agent.step(curState, state.memory[-1], reward, [1]+state.memory, done)
+
+        # state = State(6)
+        # tree = generate_tree(state)
+
+        # #print("=========================================")
+        # #print(tree)
+        # #print("=========================================")
+        # reward = get_reward(tree)
+        # for (cur_state, action, new_state) in state.record:
+        #     new_state = state_to_tensor(new_state)
+        #     reward_val = torch.from_numpy(np.array(reward))
+        #     transition = (cur_state, action, reward_val, new_state)
+        #     optimize_model(transition)
 
         # if (i%TARGET_UPDATE == 0):
         #     target_net.load_state_dict(policy_net.state_dict())
-        # print("epoch = ", i)
+        # #print("epoch = ", i)
         print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
 
 
