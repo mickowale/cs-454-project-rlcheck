@@ -16,7 +16,7 @@ import torchvision.transforms as T
 import math
 
 from dqn_agent import Agent
-agent = Agent(state_size=8, action_size=13, seed=0)
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,7 +25,7 @@ epsilon = 0.25
 gamma = 1
 BATCH_SIZE = 16
 MAX_DEPTH = 4
-TRIALS = 1000
+
 TARGET_UPDATE = 10
 done =0
 
@@ -39,9 +39,9 @@ def get_reward(tree):
         valids += 1
         if tree.__repr__() not in valid_set:
             valid_set.add(tree.__repr__())
-            return 20
-        else:
             return 10
+        else:
+            return 1
     else:
         return -1
 
@@ -64,131 +64,59 @@ class State(object):
     def __len__(self):
         return len(self.memory)
 
-class DQN(nn.Module):
-    def __init__(self):
-        super(DQN, self).__init__()
 
-        self.linear1 = nn.Linear(6, 16)
-        self.linear2 = nn.Linear(16, 32)
-        self.linear3 = nn.Linear(32, 10)  
-        self.relu = nn.ReLU()          
-
-
-    def forward(self, x):   
-
-        x = self.linear1(x)
-        x = self.relu(x)
-        x = self.linear2(x)
-        x = self.relu(x)
-        x = self.linear3(x)
-        # x = self.relu(x)
-        return x
-
-def state_to_tensor(state):
-    # state = [v/10 for v in state]
-
-    a = np.array(state, dtype=np.float32)
-    return  torch.from_numpy(a)
-
-def optimize_model(trans):
-    y_values = []
-    p_values = []
-
-    # Collect the y and p values to calculate the loss
-    (state, action, reward, next_state) = trans
-    idx_action = action-1 # The index in the list is action - 1
-
-
-    y = torch.from_numpy(np.array(reward, dtype=np.float32))
-
-    state = state_to_tensor(state)
-    p = policy_net(state)[idx_action]
-    y_values.append(y)
-    p_values.append(p)
-    y_values = torch.stack(y_values).detach()
-    p_values = torch.stack(p_values)
-    loss = F.mse_loss(p_values, y_values)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-
-policy_net = DQN().to(device)
-# target_net = DQN().to(device)
-# target_net.load_state_dict(policy_net.state_dict())
-# target_net.eval()
-
-optimizer = optim.RMSprop(policy_net.parameters())
-
-
-def select_action(state):
-    if random.random() < epsilon:
-        a = random.choices([1,2,3,4,5,6,7,8,9,10])
-        return torch.from_numpy(np.array(a))
-
-    else:   
-        state = state_to_tensor(state.memory)
-        output = policy_net(state)
-        return torch.argmax(output) + 1
-
-
-
-# TODO: When do we use the target network?
-def select_exploit_action(model, state):
-    if random.random() < epsilon:
-        a = random.choice([1,2,3,4,5,6,7,8,9,10])
-        return a
-    else:
-        state = state_to_tensor(state.memory)
-        output = model(state)
-        # #print("State: ", state, end="")
-        print(model.parameters)
-        # print(output)
-        return int(torch.argmax(output)) + 1
-
-
-def generate_tree(state, depth=0):
-    curState = [0]+state.memory[:]
-    value = agent.act(np.array([0]+state.memory), epsilon)
-    reward = 0
-    if value>10:
-        reward = -1
-    agent.step(curState, value, reward, [0]+state.memory, done)
-    print(value)
-    state.push(value)
+def generate_tree(oracle, depth=0):
+    value = oracle.Select(nodeValues,1)
     tree = BinarySearchTree(value) 
 
-    left = random.choice([True,False])
-    leftValue = 11 if left else 12
-    state.push(leftValue)
-    if depth < MAX_DEPTH and left:
-        # state.push(left) # To denote left subtree existence
-        tree.left = generate_tree(state, depth+1)
-    
-    right = random.choice([True,False])
-    rightValue = 11 if left else 12
-    state.push(rightValue)
-    if depth < MAX_DEPTH and right:
-        # state.push(-1) # To denote right subtree existence
-        tree.right = generate_tree(state, depth+1) 
+    if depth < MAX_DEPTH and oracle.Select(branchValues,2):
+        tree.left = generate_tree(oracle, depth+1)
+
+    if depth < MAX_DEPTH and oracle.Select(branchValues,3):
+        tree.right = generate_tree(oracle, depth+1) 
     return tree 
 
+state_size = 10
+class Oracle:
+    def __init__(self, epsilon=0.25, gamma=1.0, initial_val=0):
+        self.state = State(state_size)
+        self.learners = {}
+
+    def Select(self, domain, idx):
+        if not idx in self.learners:
+            self.learners[idx] = Agent(state_size=state_size,action_size=len(domain),seed=0)
+        choice = self.learners[idx].select(domain,self.state)
+        return choice
+    def reward(self, reward):
+        for learner in self.learners.values():
+            learner.reward(reward)
+        self.state = State(state_size)
+
+
+nodeValues = range(0,11)
+# print(nodeValues)
+branchValues = [False,True]
+# agent = Agent(state_size=8, action_size=13, seed=0)
 
 def fuzz():
+    TRIALS = 10000
+    oracle = Oracle()
     for i in range(TRIALS):
-        state = State(7)
-        curState = [0]+state.memory[:]
+        
+        # curState = [0]+state.memory[:]
         # print("curState",curState)
-        tree = generate_tree(state)
+        tree = generate_tree(oracle)
         # action = agent.act(np.array(state.memory), epsilon)
         reward = get_reward(tree)
-        agent.step(curState, state.memory[-1], reward, [1]+state.memory, done)
+        # for agent in oracle.learners.items:
+        oracle.reward(reward)
+        # agent.step(curState, state.memory[-1], reward, [1]+state.memory, done)
 
         # state = State(6)
         # tree = generate_tree(state)
 
         # #print("=========================================")
-        # #print(tree)
+        # print(tree)
         # #print("=========================================")
         # reward = get_reward(tree)
         # for (cur_state, action, new_state) in state.record:
@@ -201,6 +129,8 @@ def fuzz():
         #     target_net.load_state_dict(policy_net.state_dict())
         # #print("epoch = ", i)
         print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
+        # print("{}".format(valids/(i+1)), end ='\n')
+
 
 
 

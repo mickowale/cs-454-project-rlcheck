@@ -13,6 +13,7 @@ GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
 UPDATE_EVERY = 5        # how often to update the network
+eps = 0.25
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -52,6 +53,7 @@ class Agent():
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(seed)
+        self.steps = []
 
         # Q-Network
         self.qnetwork_local = QNetwork(state_size, action_size, seed).to(device)
@@ -63,7 +65,33 @@ class Agent():
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
     
-    def step(self, state, action, reward, next_state, done):
+    def select(self,domain,state):
+ 
+        curState = state.memory[:]
+        # print(curState)
+        value = self.act(np.array(state.memory), eps)
+        # print(len(domain),domain,value)
+        choice = domain[value]
+        state.push(choice)
+        self.steps.append((curState,choice))
+        # agent.step(curState, value, reward, [0]+self.state.memory, done)
+        # print(value)
+        
+        return choice
+        
+    def reward(self, reward):
+        # print("reward",reward)
+        T = len(self.steps)
+        # print(reward)
+        # print(self.steps)
+        # s,a = self.steps[-1]
+        # self.step(s,a,reward,s[1:]+[a])
+        for i in range(T):
+            s, a = self.steps[i] 
+            self.step(s,a,reward,s[1:]+[a])
+        self.steps = []
+
+    def step(self, state, action, reward, next_state, done=0):
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
         
@@ -91,11 +119,12 @@ class Agent():
 
         # Epsilon-greedy action selection
         if random.random() > eps:
+            # print(np.argmax(action_values.cpu().data.numpy()))
             return np.argmax(action_values.cpu().data.numpy())
         else:
             action = random.choice(np.arange(self.action_size))
-            while action==1 and state[0][action+3] == 1:
-                action = random.choice(np.arange(self.action_size))
+            # while action==1 and state[0][action+3] == 1:
+            #     action = random.choice(np.arange(self.action_size))
             return action
 
     def learn(self, experiences, gamma):
