@@ -9,11 +9,11 @@ import torch.nn as nn
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 64         # minibatch size
-GAMMA = 0.99            # discount factor
+GAMMA = 0.5            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
-UPDATE_EVERY = 10        # how often to update the network
-eps = 0.25
+UPDATE_EVERY = 20        # how often to update the network
+eps = 0.5
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -82,10 +82,7 @@ class Agent():
     def reward(self, reward):
         # print("reward",reward)
         T = len(self.steps)
-        # print(reward)
-        # print(self.steps)
-        # s,a = self.steps[-1]
-        # self.step(s,a,reward,s[1:]+[a])
+
         for i in range(T):
             s, a = self.steps[i] 
             self.step(s,a,reward,s[1:]+[a])

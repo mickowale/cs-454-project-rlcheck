@@ -76,7 +76,7 @@ def generate_tree(oracle, depth=0):
         tree.right = generate_tree(oracle, depth+1) 
     return tree 
 
-state_size = 10
+state_size = 15
 class Oracle:
     def __init__(self, epsilon=0.25, gamma=1.0, initial_val=0):
         self.state = State(state_size)
@@ -99,22 +99,18 @@ branchValues = [False,True]
 # agent = Agent(state_size=8, action_size=13, seed=0)
 
 def fuzz():
-    TRIALS = 10000
+    TRIALS = 100000
     oracle = Oracle()
     for i in range(TRIALS):
         
-        # curState = [0]+state.memory[:]
         # print("curState",curState)
         tree = generate_tree(oracle)
-        # action = agent.act(np.array(state.memory), epsilon)
+
         reward = get_reward(tree)
         # for agent in oracle.learners.items:
         oracle.reward(reward)
         # agent.step(curState, state.memory[-1], reward, [1]+state.memory, done)
-
-        # state = State(6)
-        # tree = generate_tree(state)
-
+        
         # #print("=========================================")
         # print(tree)
         # #print("=========================================")
@@ -128,7 +124,8 @@ def fuzz():
         # if (i%TARGET_UPDATE == 0):
         #     target_net.load_state_dict(policy_net.state_dict())
         # #print("epoch = ", i)
-        print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
+        if i%100==0:
+            print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
         # print("{}".format(valids/(i+1)), end ='\n')
 
 
