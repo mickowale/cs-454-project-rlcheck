@@ -27,7 +27,6 @@ BATCH_SIZE = 16
 MAX_DEPTH = 4
 
 TARGET_UPDATE = 10
-done =0
 
 valids = 0
 valid_set = set()
@@ -99,7 +98,7 @@ branchValues = [False,True]
 # agent = Agent(state_size=8, action_size=13, seed=0)
 
 def fuzz():
-    TRIALS = 100000
+    TRIALS = 100001
     oracle = Oracle()
     for i in range(TRIALS):
         
@@ -109,7 +108,7 @@ def fuzz():
         reward = get_reward(tree)
         # for agent in oracle.learners.items:
         oracle.reward(reward)
-        # agent.step(curState, state.memory[-1], reward, [1]+state.memory, done)
+        # agent.step(curState, state.memory[-1], reward, [1]+state.memory)
         
         # #print("=========================================")
         # print(tree)

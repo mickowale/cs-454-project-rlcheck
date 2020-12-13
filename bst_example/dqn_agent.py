@@ -7,9 +7,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 
-BUFFER_SIZE = int(1e5)  # replay buffer size
+BUFFER_SIZE = int(1e4)  # replay buffer size
 BATCH_SIZE = 64         # minibatch size
-GAMMA = 0.5            # discount factor
+GAMMA = 0.2            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
 UPDATE_EVERY = 20        # how often to update the network
@@ -74,7 +74,7 @@ class Agent():
         choice = domain[value]
         state.push(choice)
         self.steps.append((curState,choice))
-        # agent.step(curState, value, reward, [0]+self.state.memory, done)
+        # agent.step(curState, value, reward, [0]+self.state.memory)
         # print(value)
         
         return choice
@@ -88,9 +88,9 @@ class Agent():
             self.step(s,a,reward,s[1:]+[a])
         self.steps = []
 
-    def step(self, state, action, reward, next_state, done=0):
+    def step(self, state, action, reward, next_state):
         # Save experience in replay memory
-        self.memory.add(state, action, reward, next_state, done)
+        self.memory.add(state, action, reward, next_state)
         
         # Learn every UPDATE_EVERY time steps.
         self.t_step = (self.t_step + 1) % UPDATE_EVERY
@@ -128,15 +128,15 @@ class Agent():
         """Update value parameters using given batch of experience tuples.
         Params
         ======
-            experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
+            experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s') tuples 
             gamma (float): discount factor
         """
-        states, actions, rewards, next_states, dones = experiences
+        states, actions, rewards, next_states = experiences
 
         # Get max predicted Q values (for next states) from target model
         Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
         # Compute Q targets for current states 
-        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
+        Q_targets = rewards + (gamma * Q_targets_next)
 
         # Get expected Q values from local model
         Q_expected = self.qnetwork_local(states).gather(1, actions)
@@ -179,12 +179,12 @@ class ReplayBuffer:
         self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)  
         self.batch_size = batch_size
-        self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
+        self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state"])
         self.seed = random.seed(seed)
     
-    def add(self, state, action, reward, next_state, done):
+    def add(self, state, action, reward, next_state):
         """Add a new experience to memory."""
-        e = self.experience(state, action, reward, next_state, done)
+        e = self.experience(state, action, reward, next_state)
         self.memory.append(e)
     
     def sample(self):
@@ -195,9 +195,8 @@ class ReplayBuffer:
         actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
         rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
         next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
   
-        return (states, actions, rewards, next_states, dones)
+        return (states, actions, rewards, next_states)
 
     def __len__(self):
         """Return the current size of internal memory."""
