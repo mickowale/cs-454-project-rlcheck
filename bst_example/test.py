@@ -39,9 +39,9 @@ def get_reward(tree):
         valids += 1
         if tree.__repr__() not in valid_set:
             valid_set.add(tree.__repr__())
-            return 10
+            return 20
         else:
-            return 1
+            return 0
     else:
         return -1
 
