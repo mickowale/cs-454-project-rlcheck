@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 
-BUFFER_SIZE = int(1e4)  # replay buffer size
+BUFFER_SIZE = int(1e3)  # replay buffer size
 BATCH_SIZE = 64         # minibatch size
 GAMMA = 0.2            # discount factor
 TAU = 1e-3              # for soft update of target parameters
@@ -68,19 +68,14 @@ class Agent():
     def select(self,domain,state):
  
         curState = state.memory[:]
-        # print(curState)
         value = self.act(np.array(state.memory), eps)
-        # print(len(domain),domain,value)
         choice = domain[value]
         state.push(choice)
         self.steps.append((curState,choice))
-        # agent.step(curState, value, reward, [0]+self.state.memory)
-        # print(value)
         
         return choice
         
     def reward(self, reward):
-        # print("reward",reward)
         T = len(self.steps)
 
         for i in range(T):
@@ -116,12 +111,9 @@ class Agent():
 
         # Epsilon-greedy action selection
         if random.random() > eps:
-            # print(np.argmax(action_values.cpu().data.numpy()))
             return np.argmax(action_values.cpu().data.numpy())
         else:
             action = random.choice(np.arange(self.action_size))
-            # while action==1 and state[0][action+3] == 1:
-            #     action = random.choice(np.arange(self.action_size))
             return action
 
     def learn(self, experiences, gamma):

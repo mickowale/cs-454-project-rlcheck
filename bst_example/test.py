@@ -1,13 +1,7 @@
-import random
-import sys
 from bst import BinarySearchTree
-from collections import Counter
-from oracles import MockOracle, Oracle
-from state_abstraction import parent_state_ngram_fn, left_right_parent_state_ngram_fn, sequence_ngram_fn
-
+from dqn_agent import Agent
 import random
 import numpy as np
-import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,19 +9,13 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import math
 
-from dqn_agent import Agent
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-epsilon = 0.25
-gamma = 1
-BATCH_SIZE = 16
 MAX_DEPTH = 4
+state_size = 10
+nodeValues = range(0,11)
+branchValues = [False,True]
 
-TARGET_UPDATE = 10
-
+# Initializing the valids count and set
 valids = 0
 valid_set = set()
 
@@ -57,7 +45,7 @@ class State(object):
             self.memory = self.memory[1:]
         self.record.append((prev_state, action_taken, self.memory.copy()))
 
-    def collect_history():
+    def collect_history(self):
         return self.record
 
     def __len__(self):
@@ -75,9 +63,9 @@ def generate_tree(oracle, depth=0):
         tree.right = generate_tree(oracle, depth+1) 
     return tree 
 
-state_size = 15
+
 class Oracle:
-    def __init__(self, epsilon=0.25, gamma=1.0, initial_val=0):
+    def __init__(self):
         self.state = State(state_size)
         self.learners = {}
 
@@ -91,45 +79,17 @@ class Oracle:
             learner.reward(reward)
         self.state = State(state_size)
 
-
-nodeValues = range(0,11)
-# print(nodeValues)
-branchValues = [False,True]
-# agent = Agent(state_size=8, action_size=13, seed=0)
-
 def fuzz():
     TRIALS = 100001
     oracle = Oracle()
     for i in range(TRIALS):
         
-        # print("curState",curState)
         tree = generate_tree(oracle)
 
         reward = get_reward(tree)
-        # for agent in oracle.learners.items:
         oracle.reward(reward)
-        # agent.step(curState, state.memory[-1], reward, [1]+state.memory)
-        
-        # #print("=========================================")
-        # print(tree)
-        # #print("=========================================")
-        # reward = get_reward(tree)
-        # for (cur_state, action, new_state) in state.record:
-        #     new_state = state_to_tensor(new_state)
-        #     reward_val = torch.from_numpy(np.array(reward))
-        #     transition = (cur_state, action, reward_val, new_state)
-        #     optimize_model(transition)
 
-        # if (i%TARGET_UPDATE == 0):
-        #     target_net.load_state_dict(policy_net.state_dict())
-        # #print("epoch = ", i)
-        if i%100==0:
-            print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
-        # print("{}".format(valids/(i+1)), end ='\n')
-
-
-
-
+        print("{} trials, {} valids, {} unique valids".format(i, valids, len(valid_set)), end ='\n')
 
 
 fuzz()

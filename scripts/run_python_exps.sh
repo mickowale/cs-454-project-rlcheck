@@ -10,7 +10,7 @@ NUM_REPS=$2
 mkdir -p $OUT_DIR
 
 SCRIPT_DIRNAME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-PYTHON_FILE=$SCRIPT_DIRNAME/../rlcheck/bst_example/bst_fuzz.py
+PYTHON_FILE=$SCRIPT_DIRNAME/../bst_example/test.py
 
 
 echo "Script start at $(date)"
@@ -20,7 +20,7 @@ for REP in $(seq 0 $((NUM_REPS - 1 ))); do
 	if [ -f $RES_FILE ]; then
 		echo "Result file $RES_FILE already exists. skipping this rep. Remove results file to force re-run."
 	else
-		python3 $PYTHON_FILE > $RES_FILE
+		python $PYTHON_FILE > $RES_FILE
 		echo "Done rep $REP; results in $RES_FILE"
 	fi
 done
